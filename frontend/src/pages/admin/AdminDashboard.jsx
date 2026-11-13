@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Sidebar from '../../components/common/Sidebar'
 import Spinner from '../../components/common/Spinner'
+import DashboardLogoutButton from '../../components/common/DashboardLogoutButton'
 import api from '../../api/axios'
 
 function formatDate(d) {
@@ -39,9 +40,14 @@ export default function AdminDashboard() {
       <Sidebar />
       <div className="app-main">
         <div className="page-content">
-          <div className="page-header">
-            <h1>Platform Administration</h1>
-            <p>System overview, platform health, user activity, and operational statistics</p>
+          <div className="page-header dashboard-page-header">
+            <div>
+              <h1>Platform Administration</h1>
+              <p>System overview, platform health, user activity, and operational statistics</p>
+            </div>
+            <div className="dashboard-header-actions">
+              <DashboardLogoutButton />
+            </div>
           </div>
 
           {error && <div className="alert alert-error">{error}</div>}

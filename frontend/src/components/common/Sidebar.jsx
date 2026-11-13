@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 function SidebarLink({ to, icon, children, onNavigate }) {
@@ -43,8 +43,7 @@ const ADMIN_LINKS = [
 ]
 
 export default function Sidebar() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 
   const links =
@@ -53,12 +52,6 @@ export default function Sidebar() {
       : user?.role === 'traveler'
       ? TRAVELER_LINKS
       : ADMIN_LINKS
-
-  const handleLogout = () => {
-    setIsOpen(false)
-    logout()
-    navigate('/login')
-  }
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -75,10 +68,6 @@ export default function Sidebar() {
         onClick={() => setIsOpen((open) => !open)}
       >
         {isOpen ? '×' : '☰'}
-      </button>
-      <button type="button" className="mobile-logout-btn" onClick={handleLogout}>
-        <span aria-hidden="true">⎋</span>
-        <span>Log out</span>
       </button>
       {isOpen && (
         <button
@@ -116,10 +105,6 @@ export default function Sidebar() {
               <div className="sidebar-user-role">{user?.role}</div>
             </div>
           </div>
-          <button type="button" className="sidebar-logout-btn" onClick={handleLogout}>
-            <span aria-hidden="true">⎋</span>
-            <span>Log out</span>
-          </button>
         </div>
       </nav>
     </>

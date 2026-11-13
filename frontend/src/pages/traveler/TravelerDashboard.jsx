@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Sidebar from '../../components/common/Sidebar'
 import StatusBadge from '../../components/common/StatusBadge'
 import Spinner from '../../components/common/Spinner'
+import DashboardLogoutButton from '../../components/common/DashboardLogoutButton'
 import api from '../../api/axios'
 import { useAuth } from '../../context/AuthContext'
 
@@ -77,14 +78,17 @@ export default function TravelerDashboard() {
       <Sidebar />
       <div className="app-main">
         <div className="page-content">
-          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div className="page-header dashboard-page-header">
             <div>
               <h1>Traveler Dashboard</h1>
               <p>Welcome back, {user?.name?.split(' ')[0]}</p>
             </div>
-            <Link to="/traveler/journeys/new" className="btn btn-primary">
-              + Add Journey
-            </Link>
+            <div className="dashboard-header-actions">
+              <Link to="/traveler/journeys/new" className="btn btn-primary">
+                + Add Journey
+              </Link>
+              <DashboardLogoutButton />
+            </div>
           </div>
 
           {!isVerified && (

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Sidebar from '../../components/common/Sidebar'
 import StatusBadge from '../../components/common/StatusBadge'
 import Spinner from '../../components/common/Spinner'
+import DashboardLogoutButton from '../../components/common/DashboardLogoutButton'
 import api from '../../api/axios'
 
 function formatDate(d) {
@@ -44,14 +45,17 @@ export default function SenderDashboard() {
       <Sidebar />
       <div className="app-main">
         <div className="page-content">
-          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div className="page-header dashboard-page-header">
             <div>
               <h1>Dashboard</h1>
               <p>Overview of your packages and activity</p>
             </div>
-            <Link to="/sender/packages/new" className="btn btn-primary">
-              + New Package
-            </Link>
+            <div className="dashboard-header-actions">
+              <Link to="/sender/packages/new" className="btn btn-primary">
+                + New Package
+              </Link>
+              <DashboardLogoutButton />
+            </div>
           </div>
 
           {error && <div className="alert alert-error">{error}</div>}
