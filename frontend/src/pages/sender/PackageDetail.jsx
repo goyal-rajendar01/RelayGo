@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import Sidebar from '../../components/common/Sidebar'
 import StatusBadge from '../../components/common/StatusBadge'
 import Spinner from '../../components/common/Spinner'
+import DeliveryReview from '../../components/common/DeliveryReview'
 import api from '../../api/axios'
 
 function formatDate(d) {
@@ -82,6 +83,10 @@ export default function PackageDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [openRequest, setOpenRequest] = useState(null)
+  const [openReviews, setOpenReviews] = useState(null)
+  const [reviewsByTraveler, setReviewsByTraveler] = useState({})
+  const [reviewsLoading, setReviewsLoading] = useState(null)
+  const [reviewsError, setReviewsError] = useState('')
   const [otp, setOtp] = useState(null)
   const [otpLoading, setOtpLoading] = useState(false)
   const [otpError, setOtpError] = useState('')
@@ -102,6 +107,34 @@ export default function PackageDetail() {
   }
 
   useEffect(() => { load() }, [id])
+
+  const toggleTravelerReviews = async (travelerId) => {
+    setReviewsError('')
+    if (openReviews === travelerId) {
+      setOpenReviews(null)
+      return
+    }
+
+    setOpenReviews(travelerId)
+    if (reviewsByTraveler[travelerId]) return
+
+    setReviewsLoading(travelerId)
+    try {
+      const res = await api.get(`/ratings/traveler/${travelerId}`)
+      if (res.data.success) {
+        setReviewsByTraveler((current) => ({
+          ...current,
+          [travelerId]: res.data.data.ratings || [],
+        }))
+      } else {
+        setReviewsError(res.data.error || 'Failed to load traveler reviews.')
+      }
+    } catch (err) {
+      setReviewsError(err.response?.data?.error || 'Failed to load traveler reviews.')
+    } finally {
+      setReviewsLoading(null)
+    }
+  }
 
   const getOtp = async (type) => {
     setOtpLoading(true)
@@ -260,6 +293,13 @@ export default function PackageDetail() {
                 </div>
               )}
 
+              {pkg.status === 'delivered' && pkg.assignedTraveler && (
+                <DeliveryReview
+                  packageId={id}
+                  travelerId={pkg.assignedTraveler.id}
+                />
+              )}
+
               {/* OTP Section (Pickup for accepted, Delivery OTP for in_transit / pending confirmation) */}
               {(pkg.status === 'accepted' || pkg.status === 'in_transit' || pkg.status === 'delivered_pending_confirmation') && (
                 <div className="panel">
@@ -308,7 +348,7 @@ export default function PackageDetail() {
                       No matching travelers found yet. Check back later.
                     </div>
                   ) : (
-                    <div>
+                    <div className="matching-table-scroll">
                       <table>
                         <thead>
                           <tr>
@@ -344,14 +384,22 @@ export default function PackageDetail() {
                                 </td>
                                 <td>₹{j.expectedReward}</td>
                                 <td>
-                                  <button
-                                    className="btn btn-primary btn-sm"
-                                    onClick={() =>
-                                      setOpenRequest(openRequest === j._id ? null : j._id)
-                                    }
-                                  >
-                                    {openRequest === j._id ? 'Cancel' : 'Send Request'}
-                                  </button>
+                                  <div className="match-actions">
+                                    <button
+                                      className="btn btn-primary btn-sm"
+                                      onClick={() =>
+                                        setOpenRequest(openRequest === j._id ? null : j._id)
+                                      }
+                                    >
+                                      {openRequest === j._id ? 'Cancel' : 'Send Request'}
+                                    </button>
+                                    <button
+                                      className="btn btn-secondary btn-sm"
+                                      onClick={() => toggleTravelerReviews(j.traveler_id)}
+                                    >
+                                      {openReviews === j.traveler_id ? 'Hide Reviews' : 'View Reviews'}
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                               {openRequest === j._id && (
@@ -362,6 +410,32 @@ export default function PackageDetail() {
                                       packageId={id}
                                       onDone={() => { setOpenRequest(null); load() }}
                                     />
+                                  </td>
+                                </tr>
+                              )}
+                              {openReviews === j.traveler_id && (
+                                <tr>
+                                  <td colSpan={7} className="traveler-reviews-cell">
+                                    <div className="traveler-reviews">
+                                      <strong>Reviews for {j.traveler?.name || 'Traveler'}</strong>
+                                      {reviewsError && <div className="alert alert-error">{reviewsError}</div>}
+                                      {reviewsLoading === j.traveler_id ? (
+                                        <p>Loading reviews…</p>
+                                      ) : (reviewsByTraveler[j.traveler_id] || []).length === 0 ? (
+                                        <p>No reviews have been submitted yet.</p>
+                                      ) : (
+                                        (reviewsByTraveler[j.traveler_id] || []).map((review) => (
+                                          <article className="traveler-review" key={review.id}>
+                                            <div className="traveler-review-heading">
+                                              <strong>{review.sender_name || 'Sender'}</strong>
+                                              <span>{review.rating}/5 ★</span>
+                                            </div>
+                                            {review.review && <p>{review.review}</p>}
+                                            <small>{formatDate(review.created_at)}</small>
+                                          </article>
+                                        ))
+                                      )}
+                                    </div>
                                   </td>
                                 </tr>
                               )}

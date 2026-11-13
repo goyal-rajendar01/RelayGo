@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css'
 import Sidebar from '../../components/common/Sidebar'
 import Spinner from '../../components/common/Spinner'
 import StatusBadge from '../../components/common/StatusBadge'
+import DeliveryReview from '../../components/common/DeliveryReview'
 import api from '../../api/axios'
 
 // Fix leaflet default icon paths (broken in Vite/webpack by default)
@@ -176,15 +177,20 @@ export default function TrackPackage() {
               )}
 
               {pkg.status === 'delivered' && (
-                <div style={{ marginBottom: 20, padding: '14px 18px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 18 }}>✓</span>
-                    <strong style={{ fontSize: 14.5, color: '#166534' }}>Delivery Complete & Confirmed</strong>
+                <>
+                  <div style={{ marginBottom: 20, padding: '14px 18px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 18 }}>✓</span>
+                      <strong style={{ fontSize: 14.5, color: '#166534' }}>Delivery Complete & Confirmed</strong>
+                    </div>
+                    <p style={{ fontSize: 13, color: '#15803D', margin: '4px 0 0 0' }}>
+                      Receipt was confirmed and the escrow payment was released to the traveler.
+                    </p>
                   </div>
-                  <p style={{ fontSize: 13, color: '#15803D', margin: '4px 0 0 0' }}>
-                    Receipt was confirmed and the escrow payment was released to the traveler.
-                  </p>
-                </div>
+                  {pkg.assignedTraveler && (
+                    <DeliveryReview packageId={id} travelerId={pkg.assignedTraveler.id} />
+                  )}
+                </>
               )}
 
               <div className="panel" style={{ marginBottom: 24 }}>
