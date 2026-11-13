@@ -76,6 +76,10 @@ export default function Sidebar() {
       >
         {isOpen ? '×' : '☰'}
       </button>
+      <button type="button" className="mobile-logout-btn" onClick={handleLogout}>
+        <span aria-hidden="true">⎋</span>
+        <span>Log out</span>
+      </button>
       {isOpen && (
         <button
           type="button"
