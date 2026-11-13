@@ -111,10 +111,11 @@ export default function Sidebar() {
               <div className="sidebar-user-name">{user?.name}</div>
               <div className="sidebar-user-role">{user?.role}</div>
             </div>
-            <button className="sidebar-logout-btn" onClick={handleLogout} title="Log out">
-              ⎋
-            </button>
           </div>
+          <button type="button" className="sidebar-logout-btn" onClick={handleLogout}>
+            <span aria-hidden="true">⎋</span>
+            <span>Log out</span>
+          </button>
         </div>
       </nav>
     </>

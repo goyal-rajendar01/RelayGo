@@ -162,7 +162,7 @@ Create a Render **Static Site** from this repository:
 - Build Command: `npm ci && npm run build`
 - Publish Directory: `dist`
 
-The frontend includes `public/_redirects`, which Vite copies into the build so React Router URLs work when opened or refreshed directly. If your static host does not support Render-style `_redirects` files, configure its equivalent SPA rewrite from `/*` to `/index.html`.
+The frontend includes `public/_redirects` for static hosts that support that file format. For a Render Static Site, add a rewrite rule in the Render Dashboard under **Redirects/Rewrites**: source `/*`, destination `/index.html`, action **Rewrite**. This host-level rule is required for React Router URLs to work when opened or refreshed directly; deploying application code alone does not add the rule.
 
 After creation, note the site's `https://...onrender.com` URL. The first build can use the default API settings; set the backend URL and redeploy after creating the backend.
 
