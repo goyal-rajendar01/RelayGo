@@ -8,46 +8,46 @@ const getStats = async (req, res) => {
   try {
     const [[userStats]] = await pool.query(`
       SELECT
-        COUNT(*) AS totalUsers,
-        SUM(CASE WHEN role = 'sender' THEN 1 ELSE 0 END) AS totalSenders,
-        SUM(CASE WHEN role = 'traveler' THEN 1 ELSE 0 END) AS totalTravelers,
-        SUM(CASE WHEN is_suspended = TRUE THEN 1 ELSE 0 END) AS suspendedUsers
+        COUNT(*) AS "totalUsers",
+        SUM(CASE WHEN role = 'sender' THEN 1 ELSE 0 END) AS "totalSenders",
+        SUM(CASE WHEN role = 'traveler' THEN 1 ELSE 0 END) AS "totalTravelers",
+        SUM(CASE WHEN is_suspended = TRUE THEN 1 ELSE 0 END) AS "suspendedUsers"
       FROM users WHERE role != 'admin'
     `);
 
     const [[packageStats]] = await pool.query(`
       SELECT
-        COUNT(*) AS totalPackages,
-        SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS openPackages,
-        SUM(CASE WHEN status IN ('accepted','in_transit') THEN 1 ELSE 0 END) AS activeDeliveries,
-        SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS completedDeliveries,
-        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelledPackages,
-        SUM(CASE WHEN status = 'disputed' THEN 1 ELSE 0 END) AS disputedPackages
+        COUNT(*) AS "totalPackages",
+        SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS "openPackages",
+        SUM(CASE WHEN status IN ('accepted','in_transit') THEN 1 ELSE 0 END) AS "activeDeliveries",
+        SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS "completedDeliveries",
+        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS "cancelledPackages",
+        SUM(CASE WHEN status = 'disputed' THEN 1 ELSE 0 END) AS "disputedPackages"
       FROM packages
     `);
 
     const [[journeyStats]] = await pool.query(`
-      SELECT COUNT(*) AS totalJourneys,
-             SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS activeJourneys
+      SELECT COUNT(*) AS "totalJourneys",
+             SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS "activeJourneys"
       FROM journeys
     `);
 
     const [[revenueStats]] = await pool.query(`
-      SELECT COALESCE(SUM(amount), 0) AS totalRevenue,
-             COALESCE(SUM(CASE WHEN status = 'held' THEN amount ELSE 0 END), 0) AS heldAmount,
-             COALESCE(SUM(CASE WHEN status = 'released' THEN amount ELSE 0 END), 0) AS releasedAmount
+      SELECT COALESCE(SUM(amount), 0) AS "totalRevenue",
+             COALESCE(SUM(CASE WHEN status = 'held' THEN amount ELSE 0 END), 0) AS "heldAmount",
+             COALESCE(SUM(CASE WHEN status = 'released' THEN amount ELSE 0 END), 0) AS "releasedAmount"
       FROM transactions
     `);
 
     const [[reportStats]] = await pool.query(`
-      SELECT COUNT(*) AS totalReports,
-             SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS openReports
+      SELECT COUNT(*) AS "totalReports",
+             SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS "openReports"
       FROM reports
     `);
 
     const [[disputeStats]] = await pool.query(`
-      SELECT COUNT(*) AS totalDisputes,
-             SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS openDisputes
+      SELECT COUNT(*) AS "totalDisputes",
+             SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS "openDisputes"
       FROM disputes
     `);
 
@@ -88,7 +88,7 @@ const getUsers = async (req, res) => {
 
     if (role) { conditions.push('u.role = ?'); params.push(role); }
     if (search) {
-      conditions.push('(u.name LIKE ? OR u.email LIKE ?)');
+      conditions.push('(u.name ILIKE ? OR u.email ILIKE ?)');
       params.push(`%${search}%`, `%${search}%`);
     }
 
@@ -104,7 +104,7 @@ const getUsers = async (req, res) => {
     const countConditions = [];
     if (role) { countConditions.push('u.role = ?'); countParams.push(role); }
     if (search) {
-      countConditions.push('(u.name LIKE ? OR u.email LIKE ?)');
+      countConditions.push('(u.name ILIKE ? OR u.email ILIKE ?)');
       countParams.push(`%${search}%`, `%${search}%`);
     }
     if (countConditions.length > 0) countQuery += ' WHERE ' + countConditions.join(' AND ');

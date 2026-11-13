@@ -29,10 +29,10 @@ router.get('/stats', async (req, res) => {
     const senderId = req.user.id;
     const [[stats]] = await pool.query(
       `SELECT
-         COUNT(*) AS totalPackages,
-         SUM(CASE WHEN status IN ('accepted', 'in_transit', 'delivered_pending_confirmation') THEN 1 ELSE 0 END) AS activePackages,
-         SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS deliveredPackages,
-         COALESCE(SUM(budget), 0) AS totalSpent
+         COUNT(*) AS "totalPackages",
+         SUM(CASE WHEN status IN ('accepted', 'in_transit', 'delivered_pending_confirmation') THEN 1 ELSE 0 END) AS "activePackages",
+         SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS "deliveredPackages",
+         COALESCE(SUM(budget), 0) AS "totalSpent"
        FROM packages
        WHERE sender_id = ?`,
       [senderId]

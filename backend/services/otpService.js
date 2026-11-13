@@ -17,10 +17,10 @@ const generateOTP = async (packageId, type) => {
   await pool.query(
     `INSERT INTO otp_verifications (package_id, otp_type, otp_code, is_used, expires_at)
      VALUES (?, ?, ?, FALSE, ?)
-     ON DUPLICATE KEY UPDATE
-       otp_code   = VALUES(otp_code),
+     ON CONFLICT (package_id, otp_type) DO UPDATE SET
+       otp_code   = EXCLUDED.otp_code,
        is_used    = FALSE,
-       expires_at = VALUES(expires_at),
+       expires_at = EXCLUDED.expires_at,
        used_at    = NULL`,
     [packageId, type, otpCode, expiresAt]
   );
@@ -44,8 +44,8 @@ const verifyOTP = async (packageId, type, _code) => {
   try {
     await pool.query(
       `INSERT INTO otp_verifications (package_id, otp_type, otp_code, is_used, expires_at, used_at)
-       VALUES (?, ?, '000000', TRUE, DATE_ADD(NOW(), INTERVAL 1 DAY), NOW())
-       ON DUPLICATE KEY UPDATE is_used = TRUE, used_at = NOW()`,
+       VALUES (?, ?, '000000', TRUE, NOW() + INTERVAL '1 day', NOW())
+       ON CONFLICT (package_id, otp_type) DO UPDATE SET is_used = TRUE, used_at = NOW()`,
       [packageId, type]
     );
   } catch (err) {

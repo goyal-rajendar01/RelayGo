@@ -7,7 +7,7 @@
 ## 📌 Key Highlights
 
 - **Human-Crafted Minimal Design:** Built with a restrained corporate palette (Slate / Navy `#0F172A`, Sky Blue `#0EA5E9`, Crisp White `#FFFFFF`, and neutral grey borders), strictly avoiding generic AI SaaS gradients, floating cards, or excessive animations.
-- **Strict Tech Stack:** React 18 (Vite) + Node.js (Express.js) + MySQL 8 (Relational schema with foreign keys & transactions) + JWT & bcrypt.
+- **Strict Tech Stack:** React 18 (Vite) + Node.js (Express.js) + PostgreSQL (relational schema with foreign keys & transactions) + JWT & bcrypt.
 - **3 Distinct Portals:** Dedicated role-based dashboards and workflows for **Senders**, **Travelers**, and **Administrators**.
 - **Intelligent Route Matching Engine:** Automatically calculates compatible journeys within destination, departure date ranges ($\pm 3$ days), remaining luggage capacity ($kg$), and verified traveler status.
 - **Two-Phase Pseudo OTP Handover:**
@@ -30,7 +30,7 @@
 relaygo/
 ├── backend/
 │   ├── config/
-│   │   └── db.js                 # MySQL2 connection pool
+│   │   └── db.js                 # PostgreSQL connection pool
 │   ├── controllers/
 │   │   ├── adminController.js    # System stats, user control, verifications, disputes
 │   │   ├── authController.js     # JWT registration, login, profile updates
@@ -42,7 +42,7 @@ relaygo/
 │   │   ├── ratingController.js   # Traveler star rating & reviews
 │   │   └── reportController.js   # Incident reports
 │   ├── database/
-│   │   ├── init.js               # One-click DB creator + schema executor + seeder
+│   │   ├── init.js               # Schema setup + safe demo seeder
 │   │   ├── schema.sql            # 10 relational tables with foreign keys & indexes
 │   │   └── seed.js               # Seed script with bcrypt-hashed passwords
 │   ├── middleware/
@@ -65,7 +65,7 @@ relaygo/
 │   │   ├── otpService.js         # Pseudo OTP generation & verification
 │   │   └── paymentService.js     # Simulated escrow transitions (HELD -> RELEASED)
 │   ├── test-api.js               # Automated 10-step full workflow verification suite
-│   ├── .env                      # Database & JWT configuration
+│   ├── .env                      # PostgreSQL & JWT configuration
 │   └── server.js                 # Express application entrypoint
 │
 └── frontend/
@@ -104,29 +104,25 @@ relaygo/
 
 ### Prerequisites
 - **Node.js**: v18+ (v20+ recommended)
-- **MySQL**: MySQL Server 8.0 running locally on port `3306`
+- **PostgreSQL**: a local PostgreSQL database or a Render PostgreSQL database
 
 ---
 
 ### Step 1: Database Setup & Seed
-1. Make sure your MySQL service is running.
-2. In `backend/.env`, verify your MySQL credentials:
+1. Create a PostgreSQL database.
+2. Copy `backend/.env.example` to `backend/.env` and set your PostgreSQL connection URL:
    ```env
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASSWORD=password
-   DB_NAME=relaygo
+   DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/relaygo
+   PGSSL=false
    JWT_SECRET=replace_with_a_long_random_secret
    PORT=5000
    FRONTEND_URL=http://localhost:5173
    ```
-3. Open a terminal in `relaygo/backend` and run the all-in-one initializer:
+3. Open a terminal in `relaygo/backend` and run:
    ```bash
-   cd relaygo/backend
-   node database/init.js
+   npm run db:setup
    ```
-   *This automatically creates the database `relaygo`, executes `schema.sql`, and populates realistic seed data.*
+   *The database provider creates the database itself. This command creates the tables and seeds demo data only when the database has no users. Existing data is not cleared.*
 
 ---
 
@@ -135,7 +131,7 @@ In `relaygo/backend`:
 ```bash
 npm start
 ```
-The server will start on `http://localhost:5000`. You will see `MySQL connected successfully`.
+The server will start on `http://localhost:5000`. You will see `PostgreSQL connected successfully`.
 
 *(Optional) You can run the automated test suite in another terminal to verify the entire backend workflow:*
 ```bash
@@ -154,9 +150,9 @@ Open your browser at: **`http://localhost:5173`**
 
 ---
 
-## ☁️ Deploying to Render with an External MySQL Database
+## ☁️ Deploying to Render PostgreSQL
 
-The backend and frontend deploy as separate Render services. The backend uses the existing MySQL database; **do not run `database/init.js`, `database/update-schema.js`, or `database/seed.js` against a database containing data you want to keep.** The database must already have the schema expected by this application, and its provider must allow connections from Render.
+The backend, frontend, and PostgreSQL database are separate Render services. Existing data from another database is not imported.
 
 ### 1. Create the frontend Static Site
 
@@ -168,9 +164,13 @@ Create a Render **Static Site** from this repository:
 
 In the Static Site's **Redirects/Rewrites** settings, add a rewrite from `/*` to `/index.html` so React Router URLs work when opened or refreshed directly.
 
-After creation, note the site's `https://...onrender.com` URL. The first build can use a temporary API URL; set the actual backend URL and trigger a new deploy after creating the backend below.
+After creation, note the site's `https://...onrender.com` URL. The first build can use the default API settings; set the backend URL and redeploy after creating the backend.
 
-### 2. Create the backend Web Service
+### 2. Create a Render PostgreSQL database
+
+Create a PostgreSQL database in Render, preferably in the same region as the backend. Copy its **Internal Database URL** for the backend service.
+
+### 3. Create the backend Web Service
 
 Create a Render **Web Service** from the same repository:
 
@@ -183,18 +183,18 @@ Add these environment variables in the Render dashboard. Enter secrets there; do
 | Key | Value |
 | --- | --- |
 | `NODE_ENV` | `production` |
-| `DB_HOST` | Host from your MySQL provider |
-| `DB_PORT` | `3306` |
-| `DB_USER` | User from your MySQL provider |
-| `DB_PASSWORD` | Current database password |
-| `DB_NAME` | Database name from your MySQL provider |
+| `DATABASE_URL` | Render PostgreSQL **Internal Database URL** |
 | `JWT_SECRET` | A new, long, random secret |
 | `JWT_EXPIRES_IN` | `7d` |
 | `FRONTEND_URL` | The frontend Static Site URL, including `https://` |
 
 Render supplies `PORT` automatically. Do not set it to a fixed value.
 
-### 3. Connect the frontend to the backend
+### 4. Create the schema and demo accounts
+
+After the backend is deployed, open its Shell in Render and run `npm run db:setup` once. This creates the tables and seeds the demo accounts only if the database has no users. Existing data is not cleared or imported.
+
+### 5. Connect the frontend to the backend
 
 In the Static Site's environment settings, add:
 
@@ -205,17 +205,17 @@ In the Static Site's environment settings, add:
 
 Trigger a new frontend deploy after setting these values. If you change either service's URL, update the corresponding environment variable and redeploy.
 
-### 4. Verify
+### 6. Verify
 
-Open `https://<backend-service>.onrender.com/health` and confirm it returns a successful health response. Then open the frontend URL and test login and the main application flows. Render's backend logs should show a successful MySQL connection. A failed database connection stops backend startup and is reported in those logs.
+Open `https://<backend-service>.onrender.com/health` and confirm it returns a successful health response. Then open the frontend URL and test login and the main application flows. Render's backend logs should show a successful PostgreSQL connection. A failed database connection stops backend startup and is reported in those logs.
 
-**Credential safety:** database passwords and JWT secrets belong only in Render's environment settings (or an untracked local `.env` file). Any credential pasted into chat should be considered exposed and rotated before deployment.
+**Credential safety:** database URLs and JWT secrets belong only in Render's environment settings (or an untracked local `.env` file). Any credential pasted into chat should be considered exposed and rotated before deployment.
 
 ---
 
 ## 🔑 Demo Login Credentials
 
-The database comes pre-seeded with verified test accounts across all three roles:
+The database setup command seeds these verified test accounts when the database has no users:
 
 | Role | Email | Password | Description / Routes |
 | :--- | :--- | :--- | :--- |

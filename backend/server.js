@@ -2,10 +2,7 @@ require('dotenv').config();
 
 if (process.env.NODE_ENV === 'production') {
   const requiredEnvVars = [
-    'DB_HOST',
-    'DB_USER',
-    'DB_PASSWORD',
-    'DB_NAME',
+    'DATABASE_URL',
     'JWT_SECRET',
     'FRONTEND_URL',
   ];
@@ -135,9 +132,9 @@ const startServer = async () => {
 
   try {
     connection = await pool.getConnection();
-    console.log('MySQL connected successfully');
+    console.log('PostgreSQL connected successfully');
   } catch (err) {
-    console.error('MySQL connection failed:', err.message);
+    console.error('PostgreSQL connection failed:', err.message);
     await pool.end();
     process.exitCode = 1;
     return;

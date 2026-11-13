@@ -1,63 +1,36 @@
--- ============================================================
--- RelayGo Database Schema
--- Run this file against an empty MySQL database named 'relaygo'
--- Usage: mysql -u root -p relaygo < schema.sql
--- ============================================================
+-- RelayGo PostgreSQL schema. Safe to run repeatedly on the same database.
 
-SET FOREIGN_KEY_CHECKS = 0;
-
-DROP TABLE IF EXISTS disputes;
-DROP TABLE IF EXISTS reports;
-DROP TABLE IF EXISTS ratings_reviews;
-DROP TABLE IF EXISTS transactions;
-DROP TABLE IF EXISTS otp_verifications;
-DROP TABLE IF EXISTS delivery_requests;
-DROP TABLE IF EXISTS packages;
-DROP TABLE IF EXISTS journeys;
-DROP TABLE IF EXISTS traveler_profiles;
-DROP TABLE IF EXISTS users;
-
-SET FOREIGN_KEY_CHECKS = 1;
-
--- ----------------------------------------------------------------
--- users
--- ----------------------------------------------------------------
-CREATE TABLE users (
-  id            INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS users (
+  id            SERIAL PRIMARY KEY,
   name          VARCHAR(100) NOT NULL,
   email         VARCHAR(100) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   phone         VARCHAR(20),
-  role          ENUM('sender','traveler','admin') NOT NULL DEFAULT 'sender',
-  is_active     BOOLEAN DEFAULT TRUE,
-  is_suspended  BOOLEAN DEFAULT FALSE,
-  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  role          VARCHAR(20) NOT NULL DEFAULT 'sender'
+                CHECK (role IN ('sender', 'traveler', 'admin')),
+  is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+  is_suspended  BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- ----------------------------------------------------------------
--- traveler_profiles
--- ----------------------------------------------------------------
-CREATE TABLE traveler_profiles (
-  id                  INT PRIMARY KEY AUTO_INCREMENT,
-  user_id             INT NOT NULL UNIQUE,
+CREATE TABLE IF NOT EXISTS traveler_profiles (
+  id                  SERIAL PRIMARY KEY,
+  user_id             INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   id_type             VARCHAR(50),
   id_number           VARCHAR(100),
-  verification_status ENUM('pending','verified','rejected') DEFAULT 'pending',
-  verified_at         TIMESTAMP NULL,
+  verification_status VARCHAR(20) DEFAULT 'pending'
+                      CHECK (verification_status IN ('pending', 'verified', 'rejected')),
+  verified_at         TIMESTAMPTZ,
   avg_rating          DECIMAL(3,2) DEFAULT 0.00,
-  total_deliveries    INT DEFAULT 0,
+  total_deliveries    INTEGER DEFAULT 0,
   bio                 TEXT,
-  created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- ----------------------------------------------------------------
--- journeys
--- ----------------------------------------------------------------
-CREATE TABLE journeys (
-  id                 INT PRIMARY KEY AUTO_INCREMENT,
-  traveler_id        INT NOT NULL,
+CREATE TABLE IF NOT EXISTS journeys (
+  id                 SERIAL PRIMARY KEY,
+  traveler_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   from_location      VARCHAR(200) NOT NULL,
   to_location        VARCHAR(200) NOT NULL,
   departure_date     DATE NOT NULL,
@@ -66,17 +39,14 @@ CREATE TABLE journeys (
   remaining_capacity DECIMAL(5,2) NOT NULL,
   expected_reward    DECIMAL(10,2) NOT NULL,
   notes              TEXT,
-  status             ENUM('active','completed','cancelled') DEFAULT 'active',
-  created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (traveler_id) REFERENCES users(id) ON DELETE CASCADE
+  status             VARCHAR(20) DEFAULT 'active'
+                     CHECK (status IN ('active', 'completed', 'cancelled')),
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- ----------------------------------------------------------------
--- packages
--- ----------------------------------------------------------------
-CREATE TABLE packages (
-  id             INT PRIMARY KEY AUTO_INCREMENT,
-  sender_id      INT NOT NULL,
+CREATE TABLE IF NOT EXISTS packages (
+  id             SERIAL PRIMARY KEY,
+  sender_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title          VARCHAR(200) NOT NULL,
   description    TEXT,
   from_location  VARCHAR(200) NOT NULL,
@@ -86,116 +56,110 @@ CREATE TABLE packages (
   dimensions     VARCHAR(100),
   category       VARCHAR(100),
   budget         DECIMAL(10,2) NOT NULL,
-  status         ENUM('open','requested','accepted','picked_up','in_transit','delivered','cancelled','disputed') DEFAULT 'open',
-  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+  status         VARCHAR(40) DEFAULT 'open'
+                 CHECK (status IN (
+                   'open', 'requested', 'accepted', 'picked_up', 'in_transit',
+                   'delivered_pending_confirmation', 'delivered', 'cancelled', 'disputed'
+                 )),
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- ----------------------------------------------------------------
--- delivery_requests
--- ----------------------------------------------------------------
-CREATE TABLE delivery_requests (
-  id            INT PRIMARY KEY AUTO_INCREMENT,
-  package_id    INT NOT NULL,
-  journey_id    INT NOT NULL,
-  traveler_id   INT NOT NULL,
-  sender_id     INT NOT NULL,
-  status        ENUM('pending','accepted','rejected','cancelled') DEFAULT 'pending',
+CREATE TABLE IF NOT EXISTS delivery_requests (
+  id            SERIAL PRIMARY KEY,
+  package_id    INTEGER NOT NULL REFERENCES packages(id),
+  journey_id    INTEGER NOT NULL REFERENCES journeys(id),
+  traveler_id   INTEGER NOT NULL REFERENCES users(id),
+  sender_id     INTEGER NOT NULL REFERENCES users(id),
+  status        VARCHAR(20) DEFAULT 'pending'
+                CHECK (status IN ('pending', 'accepted', 'rejected', 'cancelled')),
   message       TEXT,
   agreed_reward DECIMAL(10,2),
-  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (package_id)  REFERENCES packages(id),
-  FOREIGN KEY (journey_id)  REFERENCES journeys(id),
-  FOREIGN KEY (traveler_id) REFERENCES users(id),
-  FOREIGN KEY (sender_id)   REFERENCES users(id),
-  UNIQUE KEY unique_package_journey (package_id, journey_id)
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (package_id, journey_id)
 );
 
--- ----------------------------------------------------------------
--- otp_verifications
--- ----------------------------------------------------------------
-CREATE TABLE otp_verifications (
-  id         INT PRIMARY KEY AUTO_INCREMENT,
-  package_id INT NOT NULL,
-  otp_type   ENUM('pickup','delivery') NOT NULL,
+CREATE TABLE IF NOT EXISTS otp_verifications (
+  id         SERIAL PRIMARY KEY,
+  package_id INTEGER NOT NULL REFERENCES packages(id),
+  otp_type   VARCHAR(20) NOT NULL CHECK (otp_type IN ('pickup', 'delivery')),
   otp_code   VARCHAR(10) NOT NULL,
-  is_used    BOOLEAN DEFAULT FALSE,
-  expires_at TIMESTAMP NOT NULL,
-  used_at    TIMESTAMP NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (package_id) REFERENCES packages(id),
-  UNIQUE KEY unique_package_otp_type (package_id, otp_type)
+  is_used    BOOLEAN NOT NULL DEFAULT FALSE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (package_id, otp_type)
 );
 
--- ----------------------------------------------------------------
--- transactions
--- ----------------------------------------------------------------
-CREATE TABLE transactions (
-  id                  INT PRIMARY KEY AUTO_INCREMENT,
-  package_id          INT NOT NULL,
-  delivery_request_id INT NOT NULL,
-  sender_id           INT NOT NULL,
-  traveler_id         INT NOT NULL,
+CREATE TABLE IF NOT EXISTS transactions (
+  id                  SERIAL PRIMARY KEY,
+  package_id          INTEGER NOT NULL REFERENCES packages(id),
+  delivery_request_id  INTEGER NOT NULL REFERENCES delivery_requests(id),
+  sender_id           INTEGER NOT NULL REFERENCES users(id),
+  traveler_id         INTEGER NOT NULL REFERENCES users(id),
   amount              DECIMAL(10,2) NOT NULL,
-  status              ENUM('held','released','refunded') DEFAULT 'held',
-  held_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  released_at         TIMESTAMP NULL,
-  FOREIGN KEY (package_id)          REFERENCES packages(id),
-  FOREIGN KEY (delivery_request_id) REFERENCES delivery_requests(id),
-  FOREIGN KEY (sender_id)           REFERENCES users(id),
-  FOREIGN KEY (traveler_id)         REFERENCES users(id)
+  status              VARCHAR(20) DEFAULT 'held'
+                      CHECK (status IN ('held', 'released', 'refunded')),
+  held_at             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  released_at         TIMESTAMPTZ
 );
 
--- ----------------------------------------------------------------
--- ratings_reviews
--- ----------------------------------------------------------------
-CREATE TABLE ratings_reviews (
-  id          INT PRIMARY KEY AUTO_INCREMENT,
-  package_id  INT NOT NULL UNIQUE,
-  sender_id   INT NOT NULL,
-  traveler_id INT NOT NULL,
-  rating      INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+CREATE TABLE IF NOT EXISTS ratings_reviews (
+  id          SERIAL PRIMARY KEY,
+  package_id  INTEGER NOT NULL UNIQUE REFERENCES packages(id),
+  sender_id   INTEGER NOT NULL REFERENCES users(id),
+  traveler_id INTEGER NOT NULL REFERENCES users(id),
+  rating      SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
   review      TEXT,
-  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (package_id)  REFERENCES packages(id),
-  FOREIGN KEY (sender_id)   REFERENCES users(id),
-  FOREIGN KEY (traveler_id) REFERENCES users(id)
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- ----------------------------------------------------------------
--- reports
--- ----------------------------------------------------------------
-CREATE TABLE reports (
-  id               INT PRIMARY KEY AUTO_INCREMENT,
-  reporter_id      INT NOT NULL,
-  reported_user_id INT,
-  package_id       INT,
+CREATE TABLE IF NOT EXISTS reports (
+  id               SERIAL PRIMARY KEY,
+  reporter_id      INTEGER NOT NULL REFERENCES users(id),
+  reported_user_id INTEGER REFERENCES users(id),
+  package_id       INTEGER REFERENCES packages(id),
   reason           VARCHAR(200) NOT NULL,
   description      TEXT,
-  status           ENUM('open','investigating','resolved') DEFAULT 'open',
-  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (reporter_id)      REFERENCES users(id),
-  FOREIGN KEY (reported_user_id) REFERENCES users(id),
-  FOREIGN KEY (package_id)       REFERENCES packages(id)
+  status           VARCHAR(20) DEFAULT 'open'
+                   CHECK (status IN ('open', 'investigating', 'resolved')),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- ----------------------------------------------------------------
--- disputes
--- ----------------------------------------------------------------
-CREATE TABLE disputes (
-  id          INT PRIMARY KEY AUTO_INCREMENT,
-  package_id  INT NOT NULL,
-  raised_by   INT NOT NULL,
+CREATE TABLE IF NOT EXISTS disputes (
+  id          SERIAL PRIMARY KEY,
+  package_id  INTEGER NOT NULL REFERENCES packages(id),
+  raised_by   INTEGER NOT NULL REFERENCES users(id),
   reason      VARCHAR(200) NOT NULL,
   description TEXT,
-  status      ENUM('open','investigating','resolved','closed') DEFAULT 'open',
+  status      VARCHAR(20) DEFAULT 'open'
+              CHECK (status IN ('open', 'investigating', 'resolved', 'closed')),
   resolution  TEXT,
-  resolved_by INT,
-  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  resolved_at TIMESTAMP NULL,
-  FOREIGN KEY (package_id)  REFERENCES packages(id),
-  FOREIGN KEY (raised_by)   REFERENCES users(id),
-  FOREIGN KEY (resolved_by) REFERENCES users(id)
+  resolved_by INTEGER REFERENCES users(id),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMPTZ
 );
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS users_set_updated_at ON users;
+CREATE TRIGGER users_set_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS packages_set_updated_at ON packages;
+CREATE TRIGGER packages_set_updated_at
+BEFORE UPDATE ON packages
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS delivery_requests_set_updated_at ON delivery_requests;
+CREATE TRIGGER delivery_requests_set_updated_at
+BEFORE UPDATE ON delivery_requests
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();

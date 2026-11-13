@@ -25,17 +25,17 @@ router.get('/stats', async (req, res) => {
     const travelerId = req.user.id;
 
     const [[journeyStat]] = await pool.query(
-      'SELECT COUNT(*) AS totalJourneys FROM journeys WHERE traveler_id = ?',
+      'SELECT COUNT(*) AS "totalJourneys" FROM journeys WHERE traveler_id = ?',
       [travelerId]
     );
 
     const [[requestStat]] = await pool.query(
-      "SELECT COUNT(*) AS pendingRequests FROM delivery_requests WHERE traveler_id = ? AND status = 'pending'",
+      'SELECT COUNT(*) AS "pendingRequests" FROM delivery_requests WHERE traveler_id = ? AND status = \'pending\'',
       [travelerId]
     );
 
     const [[deliveryStat]] = await pool.query(
-      `SELECT COUNT(*) AS completedDeliveries
+      `SELECT COUNT(*) AS "completedDeliveries"
        FROM delivery_requests dr
        JOIN packages p ON p.id = dr.package_id
        WHERE dr.traveler_id = ? AND p.status = 'delivered'`,
@@ -43,7 +43,7 @@ router.get('/stats', async (req, res) => {
     );
 
     const [[earnedStat]] = await pool.query(
-      "SELECT COALESCE(SUM(amount), 0) AS totalEarned FROM transactions WHERE traveler_id = ? AND status = 'released'",
+      'SELECT COALESCE(SUM(amount), 0) AS "totalEarned" FROM transactions WHERE traveler_id = ? AND status = \'released\'',
       [travelerId]
     );
 
@@ -318,12 +318,12 @@ router.get('/earnings', async (req, res) => {
     const travelerId = req.user.id;
 
     const [[releasedStat]] = await pool.query(
-      "SELECT COALESCE(SUM(amount), 0) AS totalEarned FROM transactions WHERE traveler_id = ? AND status = 'released'",
+      'SELECT COALESCE(SUM(amount), 0) AS "totalEarned" FROM transactions WHERE traveler_id = ? AND status = \'released\'',
       [travelerId]
     );
 
     const [[heldStat]] = await pool.query(
-      "SELECT COALESCE(SUM(amount), 0) AS pendingPayment FROM transactions WHERE traveler_id = ? AND status = 'held'",
+      'SELECT COALESCE(SUM(amount), 0) AS "pendingPayment" FROM transactions WHERE traveler_id = ? AND status = \'held\'',
       [travelerId]
     );
 
